@@ -288,7 +288,7 @@ window.firestore = {
         await loadYearSummary(user.uid); // Add this line
         await loadAllServices(user.uid);
     } else {
-        window.location.href = 'https://my-home-log.github.io/my-home-events/index.html';
+        window.location.href = window.location.href = 'index.html';;
     }
 });
 
@@ -297,7 +297,7 @@ window.firestore = {
         document.getElementById('logoutButton').addEventListener('click', async () => {
             try {
                 await signOut(auth);
-                window.location.href = 'https://my-home-log.github.io/my-home-events/index.html';
+                window.location.href = window.location.href = 'index.html';;
             } catch (error) {
                 console.error('Error signing out:', error);
             }
