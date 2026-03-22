@@ -5,29 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Home Events</title>
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
+            min-height: 100vh;
             background-color: #f0f2f5;
+            display: flex;
+            align-items: stretch;
         }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+ 
+        /* Split layout */
+        .page-wrapper {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
         }
-        h1 {
+ 
+        /* LEFT hero panel */
+        .hero-panel {
+            flex: 1;
+            background: linear-gradient(145deg, #1a4fa8 0%, #4A90E2 60%, #77B8F0 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px 56px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-panel::before {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.06);
+            top: -180px; right: -140px;
+        }
+        .hero-panel::after {
+            content: '';
+            position: absolute;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            bottom: -80px; left: -60px;
+        }
+ 
+        .hero-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 52px;
+        }
+        .hero-logo svg {
+            width: 44px; height: 44px;
+            fill: white;
+            flex-shrink: 0;
+        }
+        .hero-logo-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            line-height: 1.1;
+        }
+        .hero-logo-text span {
+            display: block;
+            font-size: 11px;
+            font-weight: normal;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            opacity: 0.75;
+            margin-top: 3px;
+        }
+ 
+        .hero-headline {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(28px, 3.5vw, 44px);
+            color: white;
+            line-height: 1.2;
+            margin-bottom: 22px;
+        }
+        .hero-headline em {
+            font-style: italic;
+            opacity: 0.88;
+        }
+ 
+        .hero-desc {
+            font-size: 15px;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.7;
+            max-width: 380px;
+            margin-bottom: 44px;
+        }
+ 
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 13px;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.9);
+            font-size: 14px;
+        }
+        .feature-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.55);
+            flex-shrink: 0;
+        }
+ 
+        /* RIGHT form panel */
+        .form-panel {
+            width: 420px;
+            flex-shrink: 0;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 56px 44px;
+        }
+ 
+        .form-panel h2 {
             color: #1a73e8;
-            text-align: center;
+            margin-bottom: 4px;
+            font-size: 24px;
         }
-        .form-container {
-            max-width: 400px;
-            margin: 20px auto;
-            padding: 20px;
+        .form-subtitle {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 28px;
         }
+ 
         .form-group {
             margin-bottom: 15px;
         }
@@ -43,6 +153,7 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
+ 
         .button {
             background-color: #1a73e8;
             color: white;
@@ -53,9 +164,8 @@
             width: 100%;
             font-size: 16px;
         }
-        .button:hover {
-            background-color: #1557b0;
-        }
+        .button:hover { background-color: #1557b0; }
+ 
         .toggle-form {
             text-align: center;
             margin-top: 15px;
@@ -65,30 +175,74 @@
             text-decoration: none;
             cursor: pointer;
         }
-        #signup-form {
-            display: none;
-        }
+ 
         .error-message {
             color: #d32f2f;
             margin-top: 10px;
             text-align: center;
         }
+ 
+        #signup-form { display: none; }
+ 
+        /* Mobile */
+        @media (max-width: 800px) {
+            .page-wrapper { flex-direction: column; }
+            .hero-panel { padding: 36px 28px 32px; flex: none; }
+            .hero-headline { font-size: 26px; }
+            .feature-list { display: none; }
+            .hero-desc { margin-bottom: 0; font-size: 14px; }
+            .form-panel { width: 100%; padding: 36px 28px; }
+        }
     </style>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-4TXVSJ70QW');
-</script>
+ 
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-4TXVSJ70QW"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-4TXVSJ70QW');
+    </script>
 </head>
 <body>
-    <div class="container">
-        <h1>My Home Events</h1>
-        
-        <!-- Login Form -->
-        <div id="login-form" class="form-container">
+ 
+<div class="page-wrapper">
+ 
+    <!-- LEFT: Hero -->
+    <div class="hero-panel">
+        <div class="hero-logo">
+            <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                <path d="M32 6L4 30h8v28h40V30h8L32 6zm0 6.5L54 28.5V54H38V40H26v14H10V28.5L32 12.5z"/>
+            </svg>
+            <div class="hero-logo-text">
+                HandyHome
+                <span>My Home Log</span>
+            </div>
+        </div>
+ 
+        <h1 class="hero-headline">
+            The service record<br>
+            your home <em>deserves.</em>
+        </h1>
+ 
+        <p class="hero-desc">
+            HandyHome is a permanent log of every repair, maintenance visit, and home improvement — with vendor details, costs, and follow-up reminders all in one place.
+        </p>
+ 
+        <div class="feature-list">
+            <div class="feature-item"><div class="feature-dot"></div>Log completed services with full vendor details</div>
+            <div class="feature-item"><div class="feature-dot"></div>Track costs across all your properties</div>
+            <div class="feature-item"><div class="feature-dot"></div>Get reminders before follow-up dates arrive</div>
+            <div class="feature-item"><div class="feature-dot"></div>Build a complete history for every home you own</div>
+        </div>
+    </div>
+ 
+    <!-- RIGHT: Login/Signup — all logic identical to original -->
+    <div class="form-panel">
+ 
+        <div id="login-form">
             <h2>Login</h2>
+            <p class="form-subtitle">Sign in to your account</p>
             <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label for="login-email">Email</label>
@@ -105,10 +259,10 @@
                 <p>Don't have an account? <a onclick="toggleForms()">Sign up</a></p>
             </div>
         </div>
-
-        <!-- Signup Form -->
-        <div id="signup-form" class="form-container">
+ 
+        <div id="signup-form">
             <h2>Sign Up</h2>
+            <p class="form-subtitle">Start tracking your home's history</p>
             <form id="signupForm" onsubmit="handleSignup(event)">
                 <div class="form-group">
                     <label for="signup-name">Full Name</label>
@@ -133,94 +287,89 @@
                 <p>Already have an account? <a onclick="toggleForms()">Login</a></p>
             </div>
         </div>
+ 
     </div>
-
-    <!-- Firebase Configuration -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } 
-        from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDxpDkK5iruNwwW5_RevYd0q9hut6rhQNM",
-            authDomain: "my-home-events.firebaseapp.com",
-            projectId: "my-home-events",
-            storageBucket: "my-home-events.firestorage.app",
-            messagingSenderId: "132719765347",
-            appId: "1:132719765347:web:5a2b8d16d39c3e58f35556",
-            measurementId: "G-4TXVSJ70QW"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-
-        // Make auth functions available globally
-        window.auth = auth;
-        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
-        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
-        window.updateProfile = updateProfile;
-    </script>
-
-    <script>
-        function toggleForms() {
-            const loginForm = document.getElementById('login-form');
-            const signupForm = document.getElementById('signup-form');
-            
-            if (loginForm.style.display === 'none') {
-                loginForm.style.display = 'block';
-                signupForm.style.display = 'none';
-            } else {
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'block';
-            }
+</div>
+ 
+<!-- Firebase Configuration — unchanged from your original -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile }
+    from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+ 
+    const firebaseConfig = {
+        apiKey: "AIzaSyDxpDkK5iruNwwW5_RevYd0q9hut6rhQNM",
+        authDomain: "my-home-events.firebaseapp.com",
+        projectId: "my-home-events",
+        storageBucket: "my-home-events.firestorage.app",
+        messagingSenderId: "132719765347",
+        appId: "1:132719765347:web:5a2b8d16d39c3e58f35556",
+        measurementId: "G-4TXVSJ70QW"
+    };
+ 
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+ 
+    window.auth = auth;
+    window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.updateProfile = updateProfile;
+</script>
+ 
+<script>
+    function toggleForms() {
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        if (loginForm.style.display === 'none') {
+            loginForm.style.display = 'block';
+            signupForm.style.display = 'none';
+        } else {
+            loginForm.style.display = 'none';
+            signupForm.style.display = 'block';
         }
-
-        async function handleSignup(event) {
-            event.preventDefault();
-            const errorDiv = document.getElementById('signup-error');
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            const confirmPassword = document.getElementById('signup-confirm-password').value;
-            const name = document.getElementById('signup-name').value;
-
-            if (password !== confirmPassword) {
-                errorDiv.textContent = 'Passwords do not match';
-                return;
-            }
-
-            try {
-                const userCredential = await window.createUserWithEmailAndPassword(window.auth, email, password);
-                await window.updateProfile(userCredential.user, {
-                    displayName: name
-                });
-                window.location.href = 'https://my-home-log.github.io/my-home-events/dashboard.html';
-            } catch (error) {
-                errorDiv.textContent = error.message;
-            }
+    }
+ 
+    async function handleSignup(event) {
+        event.preventDefault();
+        const errorDiv = document.getElementById('signup-error');
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        const confirmPassword = document.getElementById('signup-confirm-password').value;
+        const name = document.getElementById('signup-name').value;
+ 
+        if (password !== confirmPassword) {
+            errorDiv.textContent = 'Passwords do not match';
+            return;
         }
-
-        async function handleLogin(event) {
-            event.preventDefault();
-            const errorDiv = document.getElementById('login-error');
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-
-            try {
-                await window.signInWithEmailAndPassword(window.auth, email, password);
-                window.location.href = 'https://my-home-log.github.io/my-home-events/dashboard.html';
-            } catch (error) {
-                errorDiv.textContent = error.message;
-            }
+        try {
+            const userCredential = await window.createUserWithEmailAndPassword(window.auth, email, password);
+            await window.updateProfile(userCredential.user, { displayName: name });
+            window.location.href = 'https://my-home-log.github.io/my-home-events/dashboard.html';
+        } catch (error) {
+            errorDiv.textContent = error.message;
         }
-
-        // Check if user is already logged in
-        window.auth.onAuthStateChanged(function(user) {
-            if (user) {
-                window.location.href = 'https://my-home-log.github.io/my-home-events/dashboard.html';
-            }
-        });
-    </script>
+    }
+ 
+    async function handleLogin(event) {
+        event.preventDefault();
+        const errorDiv = document.getElementById('login-error');
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        try {
+            await window.signInWithEmailAndPassword(window.auth, email, password);
+            window.location.href = 'https://my-home-log.github.io/my-home-events/dashboard.html';
+        } catch (error) {
+            errorDiv.textContent = error.message;
+        }
+    }
+ 
+    window.auth.onAuthStateChanged(function(user) {
+        if (user) {
+            window.location.href = 'https://my-home-log.github.io/my-home-events/dashboard.html';
+        }
+    });
+</script>
+ 
 </body>
 </html>
+ 
