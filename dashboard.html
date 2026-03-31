@@ -231,6 +231,7 @@ import {
     deleteDoc,
     doc,
     getDoc,
+    setDoc,
     updateDoc,
     query, 
     where, 
@@ -271,6 +272,7 @@ window.firestore = {
     deleteDoc,
     doc,
     getDoc,
+    setDoc,
     updateDoc,
     query,
     where,
@@ -279,16 +281,42 @@ window.firestore = {
     getDocs,
     onSnapshot
 };
-
 // Load recent services when user is authenticated
         
-        auth.onAuthStateChanged(async (user) => {
+       auth.onAuthStateChanged(async (user) => {
     if (user) {
         document.getElementById('userName').textContent = user.displayName || user.email;
-        await populatePropertyFilter(user.uid); // Call to populate dropdown
+
+        // Check for existing user profile, prompt for ZIP if missing
+        const userDocRef = window.firestore.doc(window.db, 'users', user.uid);
+        const userDocSnap = await window.firestore.getDoc(userDocRef);
+
+        if (!userDocSnap.exists()) {
+            // No profile yet — show ZIP banner
+            const banner = document.createElement('div');
+            banner.id = 'zipBanner';
+            banner.style = 'background-color: #77A8E8; padding: 12px 20px; display: flex; align-items: center; gap: 10px; margin-bottom: 15px; border-radius: 6px;';
+            banner.innerHTML = `
+                <span style="flex: 1; font-size: 14px;">📍 Add your ZIP code to help us improve HandyHome for your area.</span>
+                <input type="text" id="bannerZip" maxlength="5" placeholder="ZIP Code" 
+                    style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; width: 100px;">
+                <button onclick="saveZipFromBanner('${user.uid}')" 
+                    style="background-color: #1a73e8; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer;">Save</button>
+                <button onclick="document.getElementById('zipBanner').remove()" 
+                    style="background: none; border: none; cursor: pointer; color: #555; font-size: 18px;">✕</button>
+            `;
+            document.querySelector('.welcome-message').after(banner);
+        } else {
+            // Profile exists — just update last_active
+            await window.firestore.updateDoc(userDocRef, {
+                last_active: new Date().toISOString()
+            });
+        }
+
+        await populatePropertyFilter(user.uid);
         await loadRecentServices(user.uid);
         await loadUpcomingMaintenance(user.uid);
-        await loadYearSummary(user.uid); // Add this line
+        await loadYearSummary(user.uid);
         await loadAllServices(user.uid);
     } else {
         window.location.href = 'index.html';
@@ -313,6 +341,29 @@ window.firestore = {
 emailjs.init('1r8AlMuY3PpUaYgjn');       
 
 // Modal control functions
+        
+// Save ZIP from banner
+async function saveZipFromBanner(userId) {
+    const zip = document.getElementById('bannerZip').value;
+    if (!zip || zip.length < 5) {
+        alert('Please enter a valid 5-digit ZIP code.');
+        return;
+    }
+    try {
+        await window.firestore.setDoc(
+            window.firestore.doc(window.db, 'users', userId), {
+                zip_code: zip,
+                user_type: 'homeowner',
+                created_at: new Date().toISOString(),
+                last_active: new Date().toISOString()
+            }
+        );
+        document.getElementById('zipBanner').remove();
+    } catch (error) {
+        console.error('Error saving ZIP:', error);
+        alert('Error saving ZIP code, please try again.');
+    }
+}
         
         function openModal() {
             document.getElementById('serviceModal').style.display = 'block';
@@ -1073,7 +1124,7 @@ END:VCALENDAR`;
 <footer style="text-align: center; padding: 10px; font-size: 12px; color: #666; background-color: #f8f9fa; margin-top: 20px;">
     <p>&copy; 2024 HandyHome. All rights reserved.</p>
     <p>This site is for personal use and home maintenance tracking only.</p>
-    <p>Version 30.6 | Last Updated: <span id="lastUpdated"></span></p>
+    <p>Version 30.7 | Last Updated: <span id="lastUpdated"></span></p>
 </footer>
 
 <script>
