@@ -77,7 +77,10 @@
             </div>
         </div>
     </div>
-    <button id="toggleYearSummary" class="add-service-btn" style="width: 100%; margin-bottom: 10px;">View Events</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <button id="toggleYearSummary" class="add-service-btn" style="width: 50%;">View Events</button>
+    <button onclick="exportCSV()" style="background-color: #609BE8; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">⬇ Export CSV</button>
+</div>
     <div id="yearSummaryTableContainer" style="display: none;">
         <div class="table-container" style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
@@ -856,7 +859,57 @@ filteredDocs.forEach((doc) => {
     const categoryFilter = category === "date_desc" ? "all" : category;
     loadAllServices(userId, selectedProperty, categoryFilter);  // Pass both property and category
 }
+// Export CSV
+function exportCSV() {
+    const selectedYear = document.getElementById('yearFilter').value;
+    const selectedProperty = document.getElementById('propertyFilter').value;
 
+    if (!window.yearSummaryDocs || window.yearSummaryDocs.length === 0) {
+        alert('No data available to export.');
+        return;
+    }
+
+    let filteredDocs = window.yearSummaryDocs;
+
+    if (selectedYear !== 'all') {
+        filteredDocs = filteredDocs.filter(doc => {
+            const record = doc.data();
+            return new Date(record.date_of_service).getFullYear() === parseInt(selectedYear);
+        });
+    }
+
+    if (filteredDocs.length === 0) {
+        alert('No records found for the selected filter.');
+        return;
+    }
+
+    const headers = ['Date', 'Property', 'Category', 'Service', 'Vendor', 'Phone', 'Cost', 'Follow-up Date', 'Notes'];
+    const rows = filteredDocs.map(doc => {
+        const r = doc.data();
+        return [
+            r.date_of_service || '',
+            r.property || 'Main Property',
+            r.category || '',
+            r.service_performed || '',
+            r.vendor_name || '',
+            r.vendor_phone || '',
+            r.cost?.toFixed(2) || '0.00',
+            r.follow_up_date || '',
+            (r.notes || '').replace(/,/g, ';')
+        ];
+    });
+
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const yearLabel = selectedYear === 'all' ? 'All_Years' : selectedYear;
+    const propertyLabel = selectedProperty === 'all' ? 'All_Properties' : selectedProperty.replace(/\s+/g, '_');
+    link.download = `HandyHome_${propertyLabel}_${yearLabel}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
         
 //Calendar Links
         
