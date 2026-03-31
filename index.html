@@ -280,6 +280,10 @@
                     <label for="signup-confirm-password">Confirm Password</label>
                     <input type="password" id="signup-confirm-password" required minlength="6">
                 </div>
+                <div class="form-group">
+                    <label for="signup-zip">ZIP Code</label>
+                    <input type="text" id="signup-zip" placeholder="e.g., 98375" maxlength="5">
+                </div>
                 <button type="submit" class="button">Sign Up</button>
                 <div id="signup-error" class="error-message"></div>
             </form>
@@ -296,6 +300,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile }
     from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
  
     const firebaseConfig = {
         apiKey: "AIzaSyDxpDkK5iruNwwW5_RevYd0q9hut6rhQNM",
@@ -310,7 +315,11 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
  
-    window.auth = auth;
+    const db = getFirestore(app);
+window.auth = auth;
+window.db = db;
+window.firestoreDoc = doc;
+window.firestoreSetDoc = setDoc;
     window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
     window.signInWithEmailAndPassword = signInWithEmailAndPassword;
     window.updateProfile = updateProfile;
@@ -342,12 +351,21 @@
             return;
         }
         try {
-            const userCredential = await window.createUserWithEmailAndPassword(window.auth, email, password);
-            await window.updateProfile(userCredential.user, { displayName: name });
-            window.location.href = 'dashboard.html';
-        } catch (error) {
-            errorDiv.textContent = error.message;
-        }
+    const userCredential = await window.createUserWithEmailAndPassword(window.auth, email, password);
+    await window.updateProfile(userCredential.user, { displayName: name });
+    
+    const zipCode = document.getElementById('signup-zip').value;
+    await window.firestoreSetDoc(window.firestoreDoc(window.db, 'users', userCredential.user.uid), {
+        zip_code: zipCode || '',
+        user_type: 'homeowner',
+        created_at: new Date().toISOString(),
+        last_active: new Date().toISOString()
+    });
+
+    window.location.href = 'dashboard.html';
+} catch (error) {
+    errorDiv.textContent = error.message;
+}
     }
  
     async function handleLogin(event) {
