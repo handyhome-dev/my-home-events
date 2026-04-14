@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HandyHome Admin</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #1a73e8;
+        }
+        h1 {
+            color: #1a73e8;
+            margin: 0;
+            font-size: 24px;
+        }
+        .admin-badge {
+            background-color: #dc3545;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background-color: #f7f9fc;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1a73e8;
+            display: block;
+        }
+        .stat-card .label {
+            font-size: 13px;
+            color: #666;
+            font-family: Arial, sans-serif;
+            margin-top: 5px;
+            display: block;
+        }
+        .stat-card.warning .number { color: #dc3545; }
+        .stat-card.success .number { color: #28a745; }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f7f9fc;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .category-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        }
+        .category-bar .bar-label {
+            width: 160px;
+            flex-shrink: 0;
+            color: #333;
+        }
+        .category-bar .bar-track {
+            flex: 1;
+            background-color: #ddd;
+            border-radius: 4px;
+            height: 14px;
+            overflow: hidden;
+        }
+        .category-bar .bar-fill {
+            height: 100%;
+            background-color: #609BE8;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .category-bar .bar-count {
+            width: 40px;
+            text-align: right;
+            color: #666;
+            flex-shrink: 0;
+        }
+        .zip-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .zip-chip {
+            background-color: #77A8E8;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-family: Arial, sans-serif;
+        }
+        .recent-item {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            color: #555;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .recent-item:last-child { border-bottom: none; }
+        .recent-item strong { color: #333; }
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-family: Arial, sans-serif;
+        }
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 700px) {
+            .two-col { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>HandyHome Admin</h1>
+            <div style="font-family: Arial, sans-serif; font-size: 12px; color: #888; margin-top: 4px;">
+                Last refreshed: <span id="refreshTime"></span>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="admin-badge">ADMIN ONLY</span>
+            <button class="logout-btn" id="logoutButton">Logout</button>
+        </div>
+    </div>
+ 
+    <div id="adminContent" class="loading">Loading admin data...</div>
+</div>
+ 
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+    import {
+        getFirestore,
+        collection,
+        getDocs,
+        query,
+        orderBy,
+        limit
+    } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+ 
+    const ADMIN_UID = 'B1rsXPJOwZUWi9kHCFGTKuLErQA2';
+ 
+    const firebaseConfig = {
+        apiKey: "AIzaSyDxpDkK5iruNwwW5_RevYd0q9hut6rhQNM",
+        authDomain: "my-home-events.firebaseapp.com",
+        projectId: "my-home-events",
+        storageBucket: "my-home-events.firestorage.app",
+        messagingSenderId: "132719765347",
+        appId: "1:132719765347:web:5a2b8d16d39c3e58f35556",
+        measurementId: "G-4TXVSJ70QW"
+    };
+ 
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+ 
+    document.getElementById('refreshTime').textContent = new Date().toLocaleString();
+ 
+    document.getElementById('logoutButton').addEventListener('click', async () => {
+        await signOut(auth);
+        window.location.href = 'index.html';
+    });
+ 
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            window.location.href = 'index.html';
+            return;
+        }
+        if (user.uid !== ADMIN_UID) {
+            window.location.href = 'dashboard.html';
+            return;
+        }
+ 
+        // Load all data
+        const [usersSnap, recordsSnap] = await Promise.all([
+            getDocs(collection(db, 'users')),
+            getDocs(query(collection(db, 'serviceRecords'), orderBy('created_at', 'desc')))
+        ]);
+ 
+        // --- Users ---
+        const users = [];
+        usersSnap.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
+        const totalUsers = users.length;
+        const usersWithZip = users.filter(u => u.zip_code && u.zip_code.length > 0).length;
+        const usersWithoutZip = totalUsers - usersWithZip;
+ 
+        // ZIP breakdown
+        const zipCounts = {};
+        users.forEach(u => {
+            if (u.zip_code) {
+                zipCounts[u.zip_code] = (zipCounts[u.zip_code] || 0) + 1;
+            }
+        });
+ 
+        // Last active
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const activeUsers = users.filter(u => {
+            if (!u.last_active) return false;
+            return new Date(u.last_active) >= thirtyDaysAgo;
+        }).length;
+ 
+        // Most recent signup
+        const mostRecentSignup = users
+            .filter(u => u.created_at)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+ 
+        // --- Records ---
+        const records = [];
+        recordsSnap.forEach(doc => records.push({ id: doc.id, ...doc.data() }));
+        const totalRecords = records.length;
+ 
+        // Activated users — unique user_ids that have at least one record
+        const activeUserIds = new Set(records.map(r => r.user_id));
+        const activatedUsers = activeUserIds.size;
+        const neverUsed = totalUsers - activatedUsers;
+ 
+        // Category breakdown
+        const categoryCounts = {};
+        records.forEach(r => {
+            if (r.category) {
+                categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1;
+            }
+        });
+        const sortedCategories = Object.entries(categoryCounts)
+            .sort((a, b) => b[1] - a[1]);
+        const maxCategoryCount = sortedCategories[0]?.[1] || 1;
+ 
+        // Total cost across all records
+        const totalCostAll = records.reduce((sum, r) => sum + (r.cost || 0), 0);
+ 
+        // Most recent record
+        const mostRecentRecord = records[0];
+ 
+        // Average records per activated user
+        const avgRecords = activatedUsers > 0 ? (totalRecords / activatedUsers).toFixed(1) : 0;
+ 
+        // --- Render ---
+        document.getElementById('adminContent').innerHTML = `
+ 
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="number">${totalUsers}</span>
+                    <span class="label">Total Users Signed Up</span>
+                </div>
+                <div class="stat-card success">
+                    <span class="number">${activatedUsers}</span>
+                    <span class="label">Activated Users<br>(logged at least 1 record)</span>
+                </div>
+                <div class="stat-card warning">
+                    <span class="number">${neverUsed}</span>
+                    <span class="label">Signed Up, Never Used</span>
+                </div>
+                <div class="stat-card">
+                    <span class="number">${totalRecords}</span>
+                    <span class="label">Total Records Logged</span>
+                </div>
+                <div class="stat-card">
+                    <span class="number">${avgRecords}</span>
+                    <span class="label">Avg Records per Active User</span>
+                </div>
+                <div class="stat-card">
+                    <span class="number">$${new Intl.NumberFormat('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0}).format(totalCostAll)}</span>
+                    <span class="label">Total Cost Logged (All Users)</span>
+                </div>
+                <div class="stat-card success">
+                    <span class="number">${activeUsers}</span>
+                    <span class="label">Active Last 30 Days</span>
+                </div>
+                <div class="stat-card warning">
+                    <span class="number">${usersWithoutZip}</span>
+                    <span class="label">Users Missing ZIP Code</span>
+                </div>
+            </div>
+ 
+            <div class="two-col">
+                <div class="section">
+                    <h3>Most Common Service Categories</h3>
+                    ${sortedCategories.map(([cat, count]) => `
+                        <div class="category-bar">
+                            <span class="bar-label">${cat}</span>
+                            <div class="bar-track">
+                                <div class="bar-fill" style="width: ${(count / maxCategoryCount * 100).toFixed(0)}%"></div>
+                            </div>
+                            <span class="bar-count">${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+ 
+                <div class="section">
+                    <h3>ZIP Codes Represented (${Object.keys(zipCounts).length})</h3>
+                    <div class="zip-grid">
+                        ${Object.entries(zipCounts).map(([zip, count]) => `
+                            <span class="zip-chip">${zip} ${count > 1 ? `(${count})` : ''}</span>
+                        `).join('')}
+                        ${Object.keys(zipCounts).length === 0 ? '<span style="color:#888; font-family:Arial,sans-serif; font-size:13px;">No ZIP codes collected yet</span>' : ''}
+                    </div>
+                </div>
+            </div>
+ 
+            <div class="two-col">
+                <div class="section">
+                    <h3>Most Recent Signup</h3>
+                    ${mostRecentSignup ? `
+                        <div class="recent-item">
+                            <strong>Date:</strong> ${new Date(mostRecentSignup.created_at).toLocaleDateString()}
+                        </div>
+                        <div class="recent-item">
+                            <strong>ZIP:</strong> ${mostRecentSignup.zip_code || 'Not provided'}
+                        </div>
+                        <div class="recent-item">
+                            <strong>User Type:</strong> ${mostRecentSignup.user_type || 'Not specified'}
+                        </div>
+                    ` : '<div class="recent-item">No data yet</div>'}
+                </div>
+ 
+                <div class="section">
+                    <h3>Most Recent Record Logged</h3>
+                    ${mostRecentRecord ? `
+                        <div class="recent-item">
+                            <strong>Service:</strong> ${mostRecentRecord.service_performed}
+                        </div>
+                        <div class="recent-item">
+                            <strong>Category:</strong> ${mostRecentRecord.category}
+                        </div>
+                        <div class="recent-item">
+                            <strong>Date:</strong> ${new Date(mostRecentRecord.date_of_service).toLocaleDateString()}
+                        </div>
+                        <div class="recent-item">
+                            <strong>Cost:</strong> $${(mostRecentRecord.cost || 0).toFixed(2)}
+                        </div>
+                    ` : '<div class="recent-item">No records yet</div>'}
+                </div>
+            </div>
+        `;
+    });
+</script>
+</body>
+</html>
+ 
