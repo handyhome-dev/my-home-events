@@ -1,3 +1,6 @@
+Admin · HTML
+Copy
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,6 +78,20 @@
             border-radius: 8px;
             border: 1px solid #ddd;
         }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .section-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+        }
         .section h3 {
             margin: 0 0 15px 0;
             color: #333;
@@ -82,6 +99,15 @@
             font-family: Arial, sans-serif;
             border-bottom: 1px solid #ddd;
             padding-bottom: 10px;
+        }
+        .zip-filter-select {
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            background-color: white;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            cursor: pointer;
         }
         .category-bar {
             display: flex;
@@ -188,8 +214,7 @@
         collection,
         getDocs,
         query,
-        orderBy,
-        limit
+        orderBy
     } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
  
     const ADMIN_UID = 'B1rsXPJOwZUWi9kHCFGTKuLErQA2';
@@ -216,14 +241,8 @@
     });
  
     auth.onAuthStateChanged(async (user) => {
-        if (!user) {
-            window.location.href = 'index.html';
-            return;
-        }
-        if (user.uid !== ADMIN_UID) {
-            window.location.href = 'dashboard.html';
-            return;
-        }
+        if (!user) { window.location.href = 'index.html'; return; }
+        if (user.uid !== ADMIN_UID) { window.location.href = 'dashboard.html'; return; }
  
         // Load all data
         const [usersSnap, recordsSnap] = await Promise.all([
@@ -238,21 +257,21 @@
         const usersWithZip = users.filter(u => u.zip_code && u.zip_code.length > 0).length;
         const usersWithoutZip = totalUsers - usersWithZip;
  
+        // Build user ID to ZIP map for joining records to ZIP
+        const userZipMap = {};
+        users.forEach(u => { if (u.zip_code) userZipMap[u.id] = u.zip_code; });
+ 
         // ZIP breakdown
         const zipCounts = {};
         users.forEach(u => {
-            if (u.zip_code) {
-                zipCounts[u.zip_code] = (zipCounts[u.zip_code] || 0) + 1;
-            }
+            if (u.zip_code) zipCounts[u.zip_code] = (zipCounts[u.zip_code] || 0) + 1;
         });
+        const allZips = Object.keys(zipCounts).sort();
  
         // Last active
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const activeUsers = users.filter(u => {
-            if (!u.last_active) return false;
-            return new Date(u.last_active) >= thirtyDaysAgo;
-        }).length;
+        const activeUsers = users.filter(u => u.last_active && new Date(u.last_active) >= thirtyDaysAgo).length;
  
         // Most recent signup
         const mostRecentSignup = users
@@ -264,20 +283,20 @@
         recordsSnap.forEach(doc => records.push({ id: doc.id, ...doc.data() }));
         const totalRecords = records.length;
  
-        // Activated users — unique user_ids that have at least one record
+        // Attach ZIP to each record via userZipMap
+        records.forEach(r => { r._zip = userZipMap[r.user_id] || null; });
+ 
+        // Activated users
         const activeUserIds = new Set(records.map(r => r.user_id));
         const activatedUsers = activeUserIds.size;
         const neverUsed = totalUsers - activatedUsers;
  
-        // Category breakdown
+        // Category breakdown — stays unfiltered always
         const categoryCounts = {};
         records.forEach(r => {
-            if (r.category) {
-                categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1;
-            }
+            if (r.category) categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1;
         });
-        const sortedCategories = Object.entries(categoryCounts)
-            .sort((a, b) => b[1] - a[1]);
+        const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
         const maxCategoryCount = sortedCategories[0]?.[1] || 1;
  
         // Total cost across all records
@@ -285,39 +304,89 @@
  
         // Most recent record
         const mostRecentRecord = records[0];
-
-        // Vendor breakdown
-        const vendorData = {};
-        records.forEach(r => {
-            const vendor = r.vendor_name && r.vendor_name.trim() !== '' ? r.vendor_name.trim() : 'Not specified';
-            if (!vendorData[vendor]) {
-                vendorData[vendor] = { count: 0, total: 0 };
-            }
-            vendorData[vendor].count += 1;
-            vendorData[vendor].total += (r.cost || 0);
-        });
-        const sortedVendors = Object.entries(vendorData)
-            .sort((a, b) => b[1].total - a[1].total);
-
-// Services Due — records with follow_up_date set, sorted soonest first
-        const today = new Date();
-        const servicesDue = records
-            .filter(r => r.follow_up_date && r.follow_up_date.trim() !== '')
-            .map(r => {
-                const followUp = new Date(r.follow_up_date);
-                const daysDiff = Math.ceil((followUp - today) / (1000 * 60 * 60 * 24));
-                return { ...r, followUpDate: followUp, daysDiff };
-            })
-            .sort((a, b) => a.followUpDate - b.followUpDate);
-
-        const overdue = servicesDue.filter(r => r.daysDiff < 0);
-        const dueSoon = servicesDue.filter(r => r.daysDiff >= 0 && r.daysDiff <= 90);
-        const upcoming = servicesDue.filter(r => r.daysDiff > 90);
-        
+ 
         // Average records per activated user
         const avgRecords = activatedUsers > 0 ? (totalRecords / activatedUsers).toFixed(1) : 0;
  
-        // --- Render ---
+        // --- Render functions for filterable tables ---
+ 
+        function renderServicesDue(filteredRecords) {
+            const today = new Date();
+            const servicesDue = filteredRecords
+                .filter(r => r.follow_up_date && r.follow_up_date.trim() !== '')
+                .map(r => {
+                    const followUp = new Date(r.follow_up_date);
+                    const daysDiff = Math.ceil((followUp - today) / (1000 * 60 * 60 * 24));
+                    return { ...r, followUpDate: followUp, daysDiff };
+                })
+                .sort((a, b) => a.followUpDate - b.followUpDate);
+ 
+            const overdue = servicesDue.filter(r => r.daysDiff < 0);
+            const dueSoon = servicesDue.filter(r => r.daysDiff >= 0 && r.daysDiff <= 90);
+            const upcoming = servicesDue.filter(r => r.daysDiff > 90);
+ 
+            document.getElementById('servicesDueTitle').textContent =
+                `Services Due — All Users (${servicesDue.length} total)`;
+ 
+            document.getElementById('servicesDueBadges').innerHTML = `
+                <span style="background-color: #dc3545; color: white; padding: 3px 10px; border-radius: 10px;">Overdue: ${overdue.length}</span>
+                <span style="background-color: #fd7e14; color: white; padding: 3px 10px; border-radius: 10px;">Due within 90 days: ${dueSoon.length}</span>
+                <span style="background-color: #28a745; color: white; padding: 3px 10px; border-radius: 10px;">Upcoming: ${upcoming.length}</span>
+            `;
+ 
+            document.getElementById('servicesDueBody').innerHTML = servicesDue.length === 0
+                ? '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #888;">No services with follow-up dates found</td></tr>'
+                : servicesDue.map((r, index) => {
+                    let statusColor = '#28a745', statusLabel = 'Upcoming';
+                    if (r.daysDiff < 0) { statusColor = '#dc3545'; statusLabel = `${Math.abs(r.daysDiff)}d overdue`; }
+                    else if (r.daysDiff <= 30) { statusColor = '#dc3545'; statusLabel = `${r.daysDiff}d away`; }
+                    else if (r.daysDiff <= 90) { statusColor = '#fd7e14'; statusLabel = `${r.daysDiff}d away`; }
+                    else { statusLabel = `${r.daysDiff}d away`; }
+                    return `
+                    <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
+                        <td style="padding: 10px;">${r.service_performed}</td>
+                        <td style="padding: 10px;">${r.category}</td>
+                        <td style="padding: 10px;">${r.vendor_name || 'Not specified'}</td>
+                        <td style="padding: 10px;">${new Date(r.date_of_service).toLocaleDateString()}</td>
+                        <td style="padding: 10px; text-align: right;">$${(r.cost || 0).toFixed(2)}</td>
+                        <td style="padding: 10px;">${new Date(r.follow_up_date).toLocaleDateString()}</td>
+                        <td style="padding: 10px; text-align: center;">
+                            <span style="background-color: ${statusColor}; color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px;">${statusLabel}</span>
+                        </td>
+                    </tr>`;
+                }).join('');
+        }
+ 
+        function renderVendorSummary(filteredRecords) {
+            const vendorData = {};
+            filteredRecords.forEach(r => {
+                const vendor = r.vendor_name && r.vendor_name.trim() !== '' ? r.vendor_name.trim() : 'Not specified';
+                if (!vendorData[vendor]) vendorData[vendor] = { count: 0, total: 0 };
+                vendorData[vendor].count += 1;
+                vendorData[vendor].total += (r.cost || 0);
+            });
+            const sortedVendors = Object.entries(vendorData).sort((a, b) => b[1].total - a[1].total);
+ 
+            document.getElementById('vendorTitle').textContent = `Vendor Summary (${sortedVendors.length} vendors)`;
+ 
+            document.getElementById('vendorBody').innerHTML = sortedVendors.length === 0
+                ? '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #888;">No vendor data for selected ZIP</td></tr>'
+                : sortedVendors.map(([vendor, data], index) => `
+                    <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
+                        <td style="padding: 10px;">${vendor}</td>
+                        <td style="padding: 10px; text-align: center;">${data.count}</td>
+                        <td style="padding: 10px; text-align: right;">$${new Intl.NumberFormat('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(data.total)}</td>
+                        <td style="padding: 10px; text-align: right;">$${new Intl.NumberFormat('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(data.total / data.count)}</td>
+                    </tr>
+                `).join('');
+        }
+ 
+        // --- Build ZIP dropdown options ---
+        const zipOptions = ['<option value="all">All ZIP Codes</option>']
+            .concat(allZips.map(z => `<option value="${z}">${z}</option>`))
+            .join('');
+ 
+        // --- Initial full render ---
         document.getElementById('adminContent').innerHTML = `
  
             <div class="stats-grid">
@@ -368,7 +437,6 @@
                         </div>
                     `).join('')}
                 </div>
- 
                 <div class="section">
                     <h3>ZIP Codes Represented (${Object.keys(zipCounts).length})</h3>
                     <div class="zip-grid">
@@ -379,14 +447,15 @@
                     </div>
                 </div>
             </div>
-
-<div class="section">
-                <h3>Services Due — All Users (${servicesDue.length} total)</h3>
-                <div style="display: flex; gap: 15px; margin-bottom: 15px; font-family: Arial, sans-serif; font-size: 13px;">
-                    <span style="background-color: #dc3545; color: white; padding: 3px 10px; border-radius: 10px;">Overdue: ${overdue.length}</span>
-                    <span style="background-color: #fd7e14; color: white; padding: 3px 10px; border-radius: 10px;">Due within 90 days: ${dueSoon.length}</span>
-                    <span style="background-color: #28a745; color: white; padding: 3px 10px; border-radius: 10px;">Upcoming: ${upcoming.length}</span>
+ 
+            <div class="section">
+                <div class="section-header">
+                    <h3 id="servicesDueTitle">Services Due — All Users</h3>
+                    <select class="zip-filter-select" id="servicesDueZipFilter">
+                        ${zipOptions}
+                    </select>
                 </div>
+                <div id="servicesDueBadges" style="display: flex; gap: 15px; margin-bottom: 15px; font-family: Arial, sans-serif; font-size: 13px;"></div>
                 <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px;">
                     <thead>
                         <tr style="background-color: #A0B4BD;">
@@ -399,34 +468,17 @@
                             <th style="padding: 10px; text-align: center; font-weight: 400;">Status</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${servicesDue.map((r, index) => {
-                            let statusColor = '#28a745';
-                            let statusLabel = 'Upcoming';
-                            if (r.daysDiff < 0) { statusColor = '#dc3545'; statusLabel = `${Math.abs(r.daysDiff)}d overdue`; }
-                            else if (r.daysDiff <= 30) { statusColor = '#dc3545'; statusLabel = `${r.daysDiff}d away`; }
-                            else if (r.daysDiff <= 90) { statusColor = '#fd7e14'; statusLabel = `${r.daysDiff}d away`; }
-                            else { statusLabel = `${r.daysDiff}d away`; }
-                            return `
-                            <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
-                                <td style="padding: 10px;">${r.service_performed}</td>
-                                <td style="padding: 10px;">${r.category}</td>
-                                <td style="padding: 10px;">${r.vendor_name || 'Not specified'}</td>
-                                <td style="padding: 10px;">${new Date(r.date_of_service).toLocaleDateString()}</td>
-                                <td style="padding: 10px; text-align: right;">$${(r.cost || 0).toFixed(2)}</td>
-                                <td style="padding: 10px;">${new Date(r.follow_up_date).toLocaleDateString()}</td>
-                                <td style="padding: 10px; text-align: center;">
-                                    <span style="background-color: ${statusColor}; color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px;">${statusLabel}</span>
-                                </td>
-                            </tr>`;
-                        }).join('')}
-                        ${servicesDue.length === 0 ? '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #888;">No services with follow-up dates found</td></tr>' : ''}
-                    </tbody>
+                    <tbody id="servicesDueBody"></tbody>
                 </table>
             </div>
-
-<div class="section">
-                <h3>Vendor Summary (${sortedVendors.length} vendors)</h3>
+ 
+            <div class="section">
+                <div class="section-header">
+                    <h3 id="vendorTitle">Vendor Summary</h3>
+                    <select class="zip-filter-select" id="vendorZipFilter">
+                        ${zipOptions}
+                    </select>
+                </div>
                 <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px;">
                     <thead>
                         <tr style="background-color: #A0B4BD;">
@@ -436,16 +488,7 @@
                             <th style="padding: 10px; text-align: right; font-weight: 400;">Avg per Job</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${sortedVendors.map(([vendor, data], index) => `
-                            <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
-                                <td style="padding: 10px;">${vendor}</td>
-                                <td style="padding: 10px; text-align: center;">${data.count}</td>
-                                <td style="padding: 10px; text-align: right;">$${new Intl.NumberFormat('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(data.total)}</td>
-                                <td style="padding: 10px; text-align: right;">$${new Intl.NumberFormat('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(data.total / data.count)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
+                    <tbody id="vendorBody"></tbody>
                 </table>
             </div>
  
@@ -453,37 +496,38 @@
                 <div class="section">
                     <h3>Most Recent Signup</h3>
                     ${mostRecentSignup ? `
-                        <div class="recent-item">
-                            <strong>Date:</strong> ${new Date(mostRecentSignup.created_at).toLocaleDateString()}
-                        </div>
-                        <div class="recent-item">
-                            <strong>ZIP:</strong> ${mostRecentSignup.zip_code || 'Not provided'}
-                        </div>
-                        <div class="recent-item">
-                            <strong>User Type:</strong> ${mostRecentSignup.user_type || 'Not specified'}
-                        </div>
+                        <div class="recent-item"><strong>Date:</strong> ${new Date(mostRecentSignup.created_at).toLocaleDateString()}</div>
+                        <div class="recent-item"><strong>ZIP:</strong> ${mostRecentSignup.zip_code || 'Not provided'}</div>
+                        <div class="recent-item"><strong>User Type:</strong> ${mostRecentSignup.user_type || 'Not specified'}</div>
                     ` : '<div class="recent-item">No data yet</div>'}
                 </div>
- 
                 <div class="section">
                     <h3>Most Recent Record Logged</h3>
                     ${mostRecentRecord ? `
-                        <div class="recent-item">
-                            <strong>Service:</strong> ${mostRecentRecord.service_performed}
-                        </div>
-                        <div class="recent-item">
-                            <strong>Category:</strong> ${mostRecentRecord.category}
-                        </div>
-                        <div class="recent-item">
-                            <strong>Date:</strong> ${new Date(mostRecentRecord.date_of_service).toLocaleDateString()}
-                        </div>
-                        <div class="recent-item">
-                            <strong>Cost:</strong> $${(mostRecentRecord.cost || 0).toFixed(2)}
-                        </div>
+                        <div class="recent-item"><strong>Service:</strong> ${mostRecentRecord.service_performed}</div>
+                        <div class="recent-item"><strong>Category:</strong> ${mostRecentRecord.category}</div>
+                        <div class="recent-item"><strong>Date:</strong> ${new Date(mostRecentRecord.date_of_service).toLocaleDateString()}</div>
+                        <div class="recent-item"><strong>Cost:</strong> $${(mostRecentRecord.cost || 0).toFixed(2)}</div>
                     ` : '<div class="recent-item">No records yet</div>'}
                 </div>
             </div>
         `;
+ 
+        // Initial render of both tables with all records
+        renderServicesDue(records);
+        renderVendorSummary(records);
+ 
+        // Wire up ZIP dropdowns independently
+        document.getElementById('servicesDueZipFilter').addEventListener('change', function() {
+            const filtered = this.value === 'all' ? records : records.filter(r => r._zip === this.value);
+            renderServicesDue(filtered);
+        });
+ 
+        document.getElementById('vendorZipFilter').addEventListener('change', function() {
+            const filtered = this.value === 'all' ? records : records.filter(r => r._zip === this.value);
+            renderVendorSummary(filtered);
+        });
+ 
     });
 </script>
 </body>
