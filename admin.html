@@ -298,7 +298,22 @@
         });
         const sortedVendors = Object.entries(vendorData)
             .sort((a, b) => b[1].total - a[1].total);
- 
+
+// Services Due — records with follow_up_date set, sorted soonest first
+        const today = new Date();
+        const servicesDue = records
+            .filter(r => r.follow_up_date && r.follow_up_date.trim() !== '')
+            .map(r => {
+                const followUp = new Date(r.follow_up_date);
+                const daysDiff = Math.ceil((followUp - today) / (1000 * 60 * 60 * 24));
+                return { ...r, followUpDate: followUp, daysDiff };
+            })
+            .sort((a, b) => a.followUpDate - b.followUpDate);
+
+        const overdue = servicesDue.filter(r => r.daysDiff < 0);
+        const dueSoon = servicesDue.filter(r => r.daysDiff >= 0 && r.daysDiff <= 90);
+        const upcoming = servicesDue.filter(r => r.daysDiff > 90);
+        
         // Average records per activated user
         const avgRecords = activatedUsers > 0 ? (totalRecords / activatedUsers).toFixed(1) : 0;
  
@@ -363,6 +378,51 @@
                         ${Object.keys(zipCounts).length === 0 ? '<span style="color:#888; font-family:Arial,sans-serif; font-size:13px;">No ZIP codes collected yet</span>' : ''}
                     </div>
                 </div>
+            </div>
+
+<div class="section">
+                <h3>Services Due — All Users (${servicesDue.length} total)</h3>
+                <div style="display: flex; gap: 15px; margin-bottom: 15px; font-family: Arial, sans-serif; font-size: 13px;">
+                    <span style="background-color: #dc3545; color: white; padding: 3px 10px; border-radius: 10px;">Overdue: ${overdue.length}</span>
+                    <span style="background-color: #fd7e14; color: white; padding: 3px 10px; border-radius: 10px;">Due within 90 days: ${dueSoon.length}</span>
+                    <span style="background-color: #28a745; color: white; padding: 3px 10px; border-radius: 10px;">Upcoming: ${upcoming.length}</span>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px;">
+                    <thead>
+                        <tr style="background-color: #A0B4BD;">
+                            <th style="padding: 10px; text-align: left; font-weight: 400;">Service</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 400;">Category</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 400;">Vendor</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 400;">Last Service</th>
+                            <th style="padding: 10px; text-align: right; font-weight: 400;">Cost</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 400;">Follow-up Due</th>
+                            <th style="padding: 10px; text-align: center; font-weight: 400;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${servicesDue.map((r, index) => {
+                            let statusColor = '#28a745';
+                            let statusLabel = 'Upcoming';
+                            if (r.daysDiff < 0) { statusColor = '#dc3545'; statusLabel = `${Math.abs(r.daysDiff)}d overdue`; }
+                            else if (r.daysDiff <= 30) { statusColor = '#dc3545'; statusLabel = `${r.daysDiff}d away`; }
+                            else if (r.daysDiff <= 90) { statusColor = '#fd7e14'; statusLabel = `${r.daysDiff}d away`; }
+                            else { statusLabel = `${r.daysDiff}d away`; }
+                            return `
+                            <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : 'white'};">
+                                <td style="padding: 10px;">${r.service_performed}</td>
+                                <td style="padding: 10px;">${r.category}</td>
+                                <td style="padding: 10px;">${r.vendor_name || 'Not specified'}</td>
+                                <td style="padding: 10px;">${new Date(r.date_of_service).toLocaleDateString()}</td>
+                                <td style="padding: 10px; text-align: right;">$${(r.cost || 0).toFixed(2)}</td>
+                                <td style="padding: 10px;">${new Date(r.follow_up_date).toLocaleDateString()}</td>
+                                <td style="padding: 10px; text-align: center;">
+                                    <span style="background-color: ${statusColor}; color: white; padding: 2px 8px; border-radius: 8px; font-size: 11px;">${statusLabel}</span>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                        ${servicesDue.length === 0 ? '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #888;">No services with follow-up dates found</td></tr>' : ''}
+                    </tbody>
+                </table>
             </div>
 
 <div class="section">
